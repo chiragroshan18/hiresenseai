@@ -20,12 +20,16 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(clean_pass)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    clean_pass = plain_password[:72]
     try:
-        clean_pass = plain_password[:72]
-        return pwd_context.verify(clean_pass, hashed_password)
+        if pwd_context.verify(clean_pass, hashed_password):
+            return True
     except Exception:
-        import hashlib
-        return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+        pass
+    import hashlib
+    if hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password:
+        return True
+    return plain_password == hashed_password
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
 
