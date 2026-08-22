@@ -40,26 +40,37 @@ class SpeechTextInput(BaseModel):
 # --- Auth Routes ---
 @router.post("/auth/register")
 def register(data: UserRegister, db: Session = Depends(auth.get_db)):
+    clean_email = data.email.strip().lower()
+    clean_name = data.name.strip()
+    
     if len(data.password) != 6 or not data.password.isdigit():
         raise HTTPException(status_code=400, detail="Password must contain exactly 6 digits")
     
-    existing = db.query(models.User).filter(models.User.email == data.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        existing = db.query(models.User).filter(models.User.email == clean_email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    hashed = auth.hash_password(data.password)
-    user = models.User(name=data.name, email=data.email, password_hash=hashed, role="user")
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+        hashed = auth.hash_password(data.password)
+        user = models.User(name=clean_name, email=clean_email, password_hash=hashed, role="user")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
-    token = auth.create_access_token({"sub": user.email, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}}
+        token = auth.create_access_token({"sub": user.email, "role": user.role})
+        return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error during registration: {str(e)}")
 
 @router.post("/auth/login")
 def login(data: UserLogin, db: Session = Depends(auth.get_db)):
+    clean_email = data.email.strip().lower()
+
     # 1. Admin Login Path
-    if data.email == config.ADMIN_EMAIL:
+    if clean_email == config.ADMIN_EMAIL.strip().lower():
         if data.password == config.ADMIN_PASSWORD:
             token = auth.create_access_token({"sub": config.ADMIN_EMAIL, "role": "admin"})
             return {
@@ -71,20 +82,27 @@ def login(data: UserLogin, db: Session = Depends(auth.get_db)):
             raise HTTPException(status_code=400, detail="Invalid admin credentials")
 
     # 2. Regular User Login Path
-    user = db.query(models.User).filter(models.User.email == data.email).first()
-    if not user or not auth.verify_password(data.password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Invalid email or password")
+    try:
+        user = db.query(models.User).filter(models.User.email == clean_email).first()
+        if not user or not auth.verify_password(data.password, user.password_hash):
+            raise HTTPException(status_code=400, detail="Invalid email or password")
 
-    token = auth.create_access_token({"sub": user.email, "role": user.role})
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}
-    }
+        token = auth.create_access_token({"sub": user.email, "role": user.role})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error during login: {str(e)}")
 
 @router.post("/auth/forgot-password")
 def forgot_password(data: ForgotPassword, db: Session = Depends(auth.get_db)):
-    if data.email == config.ADMIN_EMAIL:
+    clean_email = data.email.strip().lower()
+    
+    if clean_email == config.ADMIN_EMAIL.strip().lower():
         raise HTTPException(status_code=400, detail="Admin password cannot be reset via this workflow")
     
     if len(data.new_password) != 6 or not data.new_password.isdigit():
@@ -93,13 +111,19 @@ def forgot_password(data: ForgotPassword, db: Session = Depends(auth.get_db)):
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    user = db.query(models.User).filter(models.User.email == data.email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        user = db.query(models.User).filter(models.User.email == clean_email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    user.password_hash = auth.hash_password(data.new_password)
-    db.commit()
-    return {"message": "Password updated successfully"}
+        user.password_hash = auth.hash_password(data.new_password)
+        db.commit()
+        return {"message": "Password updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error updating password: {str(e)}")
 
 @router.post("/auth/change-password")
 def change_password(data: UpdatePassword, current_user = Depends(auth.get_current_user), db: Session = Depends(auth.get_db)):

@@ -1,7 +1,11 @@
 import axios from 'axios';
 
-const rawUrl = import.meta.env.VITE_API_URL || 'https://hiresense-ai-backend-km18.onrender.com/api';
-const API_BASE_URL = rawUrl.replace(/\/+$/, '');
+let rawUrl = import.meta.env.VITE_API_URL || 'https://hiresense-ai-backend-km18.onrender.com/api';
+rawUrl = rawUrl.replace(/\/+$/, '');
+if (!rawUrl.endsWith('/api')) {
+  rawUrl = `${rawUrl}/api`;
+}
+const API_BASE_URL = rawUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

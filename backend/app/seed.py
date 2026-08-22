@@ -2,6 +2,7 @@ from app import models, auth, config
 import json
 
 def seed_data():
+    models.init_db()
     db = models.SessionLocal()
     try:
         # 1. Seed Admin Account

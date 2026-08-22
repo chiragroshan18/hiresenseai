@@ -58,21 +58,23 @@ def startup_event():
 
 app.include_router(router)
 
-# Fallback compatibility redirects for legacy /auth calls without /api prefix
-from fastapi.responses import RedirectResponse
-from fastapi import Request
+# Direct alias endpoints for non-/api paths to prevent CORS redirect failures
+from app.api import login as login_handler, register as register_handler, forgot_password as forgot_password_handler, UserLogin, UserRegister, ForgotPassword
+from app.auth import get_db
+from sqlalchemy.orm import Session
+from fastapi import Depends
 
 @app.post("/auth/login")
-async def redirect_auth_login():
-    return RedirectResponse(url="/api/auth/login", status_code=307)
+def unprefixed_login(data: UserLogin, db: Session = Depends(get_db)):
+    return login_handler(data, db)
 
 @app.post("/auth/register")
-async def redirect_auth_register():
-    return RedirectResponse(url="/api/auth/register", status_code=307)
+def unprefixed_register(data: UserRegister, db: Session = Depends(get_db)):
+    return register_handler(data, db)
 
 @app.post("/auth/forgot-password")
-async def redirect_auth_forgot_password():
-    return RedirectResponse(url="/api/auth/forgot-password", status_code=307)
+def unprefixed_forgot_password(data: ForgotPassword, db: Session = Depends(get_db)):
+    return forgot_password_handler(data, db)
 
 @app.get("/")
 def read_root():

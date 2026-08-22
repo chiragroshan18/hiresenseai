@@ -58,7 +58,18 @@ export default function Login({ onLoginSuccess }) {
         onLoginSuccess(data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'An authentication error occurred');
+      const detail = err.response?.data?.detail;
+      let msg = 'An authentication error occurred';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail)) {
+        msg = detail.map((item) => item.msg || JSON.stringify(item)).join(', ');
+      } else if (detail && typeof detail === 'object') {
+        msg = detail.message || JSON.stringify(detail);
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
