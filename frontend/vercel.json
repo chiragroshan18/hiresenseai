@@ -1,4 +1,8 @@
+# https://vercel.com/docs/projects/project-configuration
 {
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
