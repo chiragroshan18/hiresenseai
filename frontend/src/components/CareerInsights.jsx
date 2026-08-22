@@ -62,7 +62,7 @@ export default function CareerInsights() {
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(96, 165, 250);
-      doc.text(`${data?.ats_score || 82}%`, 18, 64);
+      doc.text(`${data?.ats_score ?? 0}%`, 18, 64);
 
       doc.setFillColor(30, 41, 59);
       doc.roundedRect(77, 46, 56, 24, 3, 3, 'F');
@@ -73,7 +73,7 @@ export default function CareerInsights() {
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(52, 211, 153); // emerald-400
-      doc.text(`${data?.job_match_score || 76}%`, 81, 64);
+      doc.text(`${data?.job_match_score ?? 0}%`, 81, 64);
 
       doc.setFillColor(30, 41, 59);
       doc.roundedRect(140, 46, 56, 24, 3, 3, 'F');
@@ -84,7 +84,7 @@ export default function CareerInsights() {
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(192, 132, 252); // purple-400
-      doc.text(`${data?.interview_score || 88}%`, 144, 64);
+      doc.text(`${data?.interview_score ?? 0}%`, 144, 64);
 
       // Section 2: Top Strengths & Missing Skill Gaps
       doc.setFontSize(12);
@@ -95,7 +95,7 @@ export default function CareerInsights() {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(241, 245, 249);
-      const strengths = data?.top_strengths?.join(', ') || 'Python, React, SQL, FastAPI';
+      const strengths = data?.top_strengths?.length ? data.top_strengths.join(', ') : 'None recorded yet';
       doc.text(`Verified Skills: ${strengths}`, 14, 88);
 
       doc.setFontSize(12);

@@ -48,7 +48,7 @@ export default function DashboardOverview({ user, onNavigate }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5 border border-white/10">
               <div className="text-slate-400 text-xs mb-1">Completed Analyses</div>
-              <div className="text-3xl font-extrabold text-blue-400">{telemetry ? (telemetry.total_analyses || 3) : "..."}</div>
+              <div className="text-3xl font-extrabold text-blue-400">{telemetry ? (telemetry.total_analyses ?? 0) : "..."}</div>
               <div className="text-[11px] text-emerald-400 mt-2 font-medium">Active Record Sync</div>
             </motion.div>
 

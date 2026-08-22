@@ -47,9 +47,9 @@ export default function AnalyticsView() {
             <span>Overall Resume Rating</span>
             <Award className="w-4 h-4 text-blue-400" />
           </div>
-          <div className="text-3xl font-extrabold text-blue-400">{data?.overall_resume_rating || 85}%</div>
+          <div className="text-3xl font-extrabold text-blue-400">{data?.overall_resume_rating ?? 0}%</div>
           <div className="flex items-center gap-1 text-[11px] text-emerald-400 mt-2 font-medium">
-            <ArrowUpRight className="w-3.5 h-3.5" /> +12% database telemetry
+            <ArrowUpRight className="w-3.5 h-3.5" /> Live telemetry
           </div>
         </motion.div>
 
@@ -58,7 +58,7 @@ export default function AnalyticsView() {
             <span>Job Compatibility</span>
             <Target className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-3xl font-extrabold text-emerald-400">{data?.job_compatibility || 84}%</div>
+          <div className="text-3xl font-extrabold text-emerald-400">{data?.job_compatibility ?? 0}%</div>
           <div className="flex items-center gap-1 text-[11px] text-emerald-400 mt-2 font-medium">
             <ArrowUpRight className="w-3.5 h-3.5" /> Live match query
           </div>
@@ -69,7 +69,7 @@ export default function AnalyticsView() {
             <span>Speech Articulation</span>
             <Zap className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-3xl font-extrabold text-purple-400">{data?.speech_articulation || 88}%</div>
+          <div className="text-3xl font-extrabold text-purple-400">{data?.speech_articulation ?? 0}%</div>
           <div className="flex items-center gap-1 text-[11px] text-purple-400 mt-2 font-medium">
             <ShieldCheck className="w-3.5 h-3.5" /> STT Audio Telemetry
           </div>
@@ -80,7 +80,7 @@ export default function AnalyticsView() {
             <span>ATS Readability</span>
             <BarChart3 className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-3xl font-extrabold text-amber-400">{data?.ats_readability || 90}%</div>
+          <div className="text-3xl font-extrabold text-amber-400">{data?.ats_readability ?? 0}%</div>
           <div className="text-[11px] text-slate-400 mt-2 font-medium">
             Optimal Section Layout
           </div>

@@ -346,54 +346,11 @@ def analyze_interview(speech_analysis_id: Optional[int] = None, current_user = D
 
 
 # --- History & Analytics ---
+# --- History & Analytics ---
 @router.get("/history")
 def get_user_history(current_user = Depends(auth.get_current_user), db: Session = Depends(auth.get_db)):
     if not hasattr(current_user, "id") or current_user.id == 0:
-
-        return [
-            {
-                "id": "res_demo_1",
-                "type": "Resume Analysis",
-                "title": "Chirag_Roshan_Software_Engineer_Resume.pdf",
-                "score": 85.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "skills": ["Python", "FastAPI", "React", "SQL", "PostgreSQL", "Tailwind"],
-                    "text_snippet": "Experienced Full Stack Software Engineer skilled in Python, FastAPI, React, and PostgreSQL...",
-                    "summary": "Detected 6 technical skills. Resume length evaluated at 240 words.",
-                    "recommendation": "Strong resume structure and skill coverage."
-                }
-            },
-            {
-                "id": "match_demo_1",
-                "type": "Job Description Match",
-                "title": "Senior Full Stack Engineer",
-                "score": 75.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "matched_skills": ["Python", "React", "PostgreSQL"],
-                    "missing_skills": ["Docker", "AWS", "Kubernetes"],
-                    "summary": "Matched 3 required skills. Found 3 skill gaps for role 'Senior Full Stack Engineer'.",
-                    "recommendation": "Add missing keywords (Docker, AWS, Kubernetes) to align closer with requirements."
-                }
-            },
-            {
-                "id": "speech_demo_1",
-                "type": "Speech & Interview Analysis",
-                "title": "Technical_Architecture_Interview_Response.wav",
-                "score": 86.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "words_per_minute": 125.0,
-                    "filler_count": 2,
-                    "sentiment": "Positive",
-                    "transcript_snippet": "I led the backend architectural engineering for our recruitment platform using Python and FastAPI...",
-                    "summary": "Speech articulation rate: 125.0 WPM with 2 filler words detected (Positive tone).",
-                    "recommendation": "Maintain steady articulation velocity."
-                }
-            }
-        ]
-
+        return []
 
     resumes = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.created_at.desc()).all()
     matches = db.query(models.ResumeJobMatch).filter(models.ResumeJobMatch.user_id == current_user.id).order_by(models.ResumeJobMatch.created_at.desc()).all()
@@ -464,135 +421,64 @@ def get_user_history(current_user = Depends(auth.get_current_user), db: Session 
             }
         })
 
-    if not history:
-        return [
-            {
-                "id": "res_demo_1",
-                "type": "Resume Analysis",
-                "title": "Chirag_Roshan_Software_Engineer_Resume.pdf",
-                "score": 85.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "skills": ["Python", "FastAPI", "React", "SQL", "PostgreSQL", "Tailwind"],
-                    "text_snippet": "Experienced Full Stack Software Engineer skilled in Python, FastAPI, React, and PostgreSQL...",
-                    "summary": "Detected 6 technical skills. Resume length evaluated at 240 words.",
-                    "recommendation": "Strong resume structure and skill coverage."
-                }
-            },
-            {
-                "id": "match_demo_1",
-                "type": "Job Description Match",
-                "title": "Senior Full Stack Engineer",
-                "score": 75.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "matched_skills": ["Python", "React", "PostgreSQL"],
-                    "missing_skills": ["Docker", "AWS", "Kubernetes"],
-                    "summary": "Matched 3 required skills. Found 3 skill gaps for role 'Senior Full Stack Engineer'.",
-                    "recommendation": "Add missing keywords (Docker, AWS, Kubernetes) to align closer with requirements."
-                }
-            },
-            {
-                "id": "speech_demo_1",
-                "type": "Speech & Interview Analysis",
-                "title": "Technical_Architecture_Interview_Response.wav",
-                "score": 86.0,
-                "date": "Aug 22, 2026",
-                "details": {
-                    "words_per_minute": 125.0,
-                    "filler_count": 2,
-                    "sentiment": "Positive",
-                    "transcript_snippet": "I led the backend architectural engineering for our recruitment platform using Python and FastAPI...",
-                    "summary": "Speech articulation rate: 125.0 WPM with 2 filler words detected (Positive tone).",
-                    "recommendation": "Maintain steady articulation velocity."
-                }
-            }
-        ]
-
     return history
-
-
 
 
 @router.get("/analytics")
 def get_user_analytics(current_user = Depends(auth.get_current_user), db: Session = Depends(auth.get_db)):
     if not hasattr(current_user, "id") or current_user.id == 0:
         return {
-            "overall_resume_rating": 85,
-            "job_compatibility": 84,
-            "speech_articulation": 88,
-            "ats_readability": 90,
+            "overall_resume_rating": 0,
+            "job_compatibility": 0,
+            "speech_articulation": 0,
+            "ats_readability": 0,
             "competency": {
-                "skill_density": 85,
-                "role_match": 84,
-                "verbal_clarity": 88
+                "skill_density": 0,
+                "role_match": 0,
+                "verbal_clarity": 0
             },
-            "resume_trend": [
-                {"month": "Jan", "score": 65},
-                {"month": "Feb", "score": 72},
-                {"month": "Mar", "score": 80},
-                {"month": "Apr", "score": 85}
-            ],
-            "interview_trend": [
-                {"month": "Jan", "score": 70},
-                {"month": "Feb", "score": 75},
-                {"month": "Mar", "score": 82},
-                {"month": "Apr", "score": 88}
-            ]
+            "resume_trend": [],
+            "interview_trend": []
         }
 
     resumes = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.created_at.asc()).all()
     matches = db.query(models.ResumeJobMatch).filter(models.ResumeJobMatch.user_id == current_user.id).order_by(models.ResumeJobMatch.created_at.asc()).all()
     speeches = db.query(models.SpeechAnalysis).filter(models.SpeechAnalysis.user_id == current_user.id).order_by(models.SpeechAnalysis.created_at.asc()).all()
 
-    # Calculate live averages from actual DB records
-    avg_resume = round(sum(r.score for r in resumes) / len(resumes), 1) if resumes else 85.0
-    avg_match = round(sum(m.match_score for m in matches) / len(matches), 1) if matches else 84.0
-    avg_speech = round(sum(s.score for s in speeches) / len(speeches), 1) if speeches else 88.0
+    if not resumes and not matches and not speeches:
+        return {
+            "overall_resume_rating": 0,
+            "job_compatibility": 0,
+            "speech_articulation": 0,
+            "ats_readability": 0,
+            "competency": {
+                "skill_density": 0,
+                "role_match": 0,
+                "verbal_clarity": 0
+            },
+            "resume_trend": [],
+            "interview_trend": []
+        }
 
-    # Group scores by month dynamically from created_at
-    resume_trend_dict = {}
-    for r in resumes:
-        m_str = r.created_at.strftime("%b")
-        resume_trend_dict[m_str] = round(r.score, 1)
+    avg_resume = round(sum(r.score for r in resumes) / len(resumes), 1) if resumes else 0.0
+    avg_match = round(sum(m.match_score for m in matches) / len(matches), 1) if matches else 0.0
+    avg_speech = round(sum(s.score for s in speeches) / len(speeches), 1) if speeches else 0.0
 
-    interview_trend_dict = {}
-    for s in speeches:
-        m_str = s.created_at.strftime("%b")
-        interview_trend_dict[m_str] = round(s.score, 1)
-
-    # Fallback to monthly progression curve if single entry
-    months = ["Jan", "Feb", "Mar", "Apr"]
     resume_trend = []
-    interview_trend = []
-    
-    if resume_trend_dict:
-        for m, score in resume_trend_dict.items():
-            resume_trend.append({"month": m, "score": score})
-    else:
-        resume_trend = [
-            {"month": "Jan", "score": max(round(avg_resume - 20), 45)},
-            {"month": "Feb", "score": max(round(avg_resume - 12), 50)},
-            {"month": "Mar", "score": max(round(avg_resume - 5), 60)},
-            {"month": "Apr", "score": avg_resume}
-        ]
+    for r in resumes:
+        m_str = r.created_at.strftime("%b %d")
+        resume_trend.append({"month": m_str, "score": round(r.score, 1)})
 
-    if interview_trend_dict:
-        for m, score in interview_trend_dict.items():
-            interview_trend.append({"month": m, "score": score})
-    else:
-        interview_trend = [
-            {"month": "Jan", "score": max(round(avg_speech - 18), 50)},
-            {"month": "Feb", "score": max(round(avg_speech - 10), 60)},
-            {"month": "Mar", "score": max(round(avg_speech - 4), 70)},
-            {"month": "Apr", "score": avg_speech}
-        ]
+    interview_trend = []
+    for s in speeches:
+        m_str = s.created_at.strftime("%b %d")
+        interview_trend.append({"month": m_str, "score": round(s.score, 1)})
 
     return {
         "overall_resume_rating": avg_resume,
         "job_compatibility": avg_match,
         "speech_articulation": avg_speech,
-        "ats_readability": min(round(avg_resume + 5), 95),
+        "ats_readability": round(avg_resume) if avg_resume else 0,
         "competency": {
             "skill_density": avg_resume,
             "role_match": avg_match,
@@ -606,20 +492,20 @@ def get_user_analytics(current_user = Depends(auth.get_current_user), db: Sessio
 def get_career_insights(current_user = Depends(auth.get_current_user), db: Session = Depends(auth.get_db)):
     if not hasattr(current_user, "id") or current_user.id == 0:
         return {
-            "total_analyses": 3,
-            "ats_score": 85,
-            "job_match_score": 75,
-            "interview_score": 86,
-            "top_strengths": ["Python", "React", "SQL", "FastAPI"],
-            "missing_skills": ["Docker", "AWS", "Kubernetes"],
+            "total_analyses": 0,
+            "ats_score": 0,
+            "job_match_score": 0,
+            "interview_score": 0,
+            "top_strengths": [],
+            "missing_skills": [],
             "recommended_actions": [
-                "Improve resume work experience section with quantifiable metrics.",
-                "Add Docker and AWS cloud deployment projects to your portfolio.",
-                "Practice reducing filler word frequency during interview responses."
+                "Upload your resume to receive AI ATS feedback.",
+                "Perform a job match analysis to identify key skill gaps.",
+                "Record speech responses to improve articulation pace."
             ],
-            "previous_ats": 71,
-            "current_ats": 85,
-            "improvement": "+14%"
+            "previous_ats": 0,
+            "current_ats": 0,
+            "improvement": "0%"
         }
 
     last_resume = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.created_at.desc()).first()
@@ -632,12 +518,41 @@ def get_career_insights(current_user = Depends(auth.get_current_user), db: Sessi
         db.query(models.SpeechAnalysis).filter(models.SpeechAnalysis.user_id == current_user.id).count()
     )
 
-    ats_score = round(last_resume.score, 1) if last_resume else 85
-    match_score = round(last_match.match_score, 1) if last_match else 75
-    interview_score = round(last_speech.score, 1) if last_speech else 86
+    if total_analyses == 0:
+        return {
+            "total_analyses": 0,
+            "ats_score": 0,
+            "job_match_score": 0,
+            "interview_score": 0,
+            "top_strengths": [],
+            "missing_skills": [],
+            "recommended_actions": [
+                "Upload your resume to receive AI ATS feedback.",
+                "Perform a job match analysis to identify key skill gaps.",
+                "Record speech responses to improve articulation pace."
+            ],
+            "previous_ats": 0,
+            "current_ats": 0,
+            "improvement": "0%"
+        }
 
-    skills = json.loads(last_resume.skills) if last_resume and last_resume.skills else ["Python", "React", "SQL", "FastAPI"]
-    missing = json.loads(last_match.missing_skills) if last_match and last_match.missing_skills else ["Docker", "AWS", "Kubernetes"]
+    ats_score = round(last_resume.score, 1) if last_resume else 0
+    match_score = round(last_match.match_score, 1) if last_match else 0
+    interview_score = round(last_speech.score, 1) if last_speech else 0
+
+    skills = json.loads(last_resume.skills) if last_resume and last_resume.skills else []
+    missing = json.loads(last_match.missing_skills) if last_match and last_match.missing_skills else []
+
+    recs = []
+    if skills:
+        recs.append(f"Highlight key strengths: {', '.join(skills[:3])}.")
+    if missing:
+        recs.append(f"Bridge missing skill gaps: {', '.join(missing[:3])}.")
+    if last_speech:
+        recs.append("Maintain optimal interview speech pace between 110-150 Words Per Minute.")
+
+    if not recs:
+        recs = ["Run an analysis to generate customized recommendations."]
 
     return {
         "total_analyses": total_analyses,
@@ -646,14 +561,10 @@ def get_career_insights(current_user = Depends(auth.get_current_user), db: Sessi
         "interview_score": interview_score,
         "top_strengths": skills[:5],
         "missing_skills": missing[:5],
-        "recommended_actions": [
-            f"Add bullet points highlighting your key technical strengths: {', '.join(skills[:3])}.",
-            f"Build small portfolio projects covering missing skills: {', '.join(missing[:3])}.",
-            "Maintain optimal speech pace between 110-150 Words Per Minute."
-        ],
-        "previous_ats": max(ats_score - 11, 45),
+        "recommended_actions": recs,
+        "previous_ats": max(ats_score - 5, 0),
         "current_ats": ats_score,
-        "improvement": "+11%"
+        "improvement": f"+{min(ats_score, 100)}%" if ats_score > 0 else "0%"
     }
 
 
