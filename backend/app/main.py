@@ -61,6 +61,11 @@ admin_ui.add_view(InterviewAnalysisAdmin)
 @app.on_event("startup")
 def startup_event():
     init_db()
+    try:
+        from app.seed import seed_data
+        seed_data()
+    except Exception as e:
+        print("Startup seed notice:", e)
 
 app.include_router(router)
 
