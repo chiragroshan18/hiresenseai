@@ -71,9 +71,6 @@ def login(data: UserLogin, db: Session = Depends(auth.get_db)):
             raise HTTPException(status_code=400, detail="Invalid admin credentials")
 
     # 2. Regular User Login Path
-    if len(data.password) != 6 or not data.password.isdigit():
-        raise HTTPException(status_code=400, detail="User password must contain exactly 6 digits")
-
     user = db.query(models.User).filter(models.User.email == data.email).first()
     if not user or not auth.verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password")
