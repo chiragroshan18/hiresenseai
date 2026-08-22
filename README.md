@@ -151,5 +151,5 @@ The project includes a complete verified Manual QA Test Plan covering **20 Test 
 ## 👤 Author & Repository
 
 - **Author**: Chirag Roshan
-- **GitHub Repository**: [https://github.com/chiragroshan18/hiresenseai.git](https://github.com/chiragroshan18/hiresenseai.git)
-- **License**: MIT
+
+
