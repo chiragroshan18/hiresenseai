@@ -61,6 +61,22 @@ def startup_event():
 
 app.include_router(router)
 
+# Fallback compatibility redirects for legacy /auth calls without /api prefix
+from fastapi.responses import RedirectResponse
+from fastapi import Request
+
+@app.post("/auth/login")
+async def redirect_auth_login():
+    return RedirectResponse(url="/api/auth/login", status_code=307)
+
+@app.post("/auth/register")
+async def redirect_auth_register():
+    return RedirectResponse(url="/api/auth/register", status_code=307)
+
+@app.post("/auth/forgot-password")
+async def redirect_auth_forgot_password():
+    return RedirectResponse(url="/api/auth/forgot-password", status_code=307)
+
 @app.get("/")
 def read_root():
     return {"message": "HireSense AI API Service Running"}
