@@ -11,24 +11,13 @@ app = FastAPI(
 )
 
 # Enable CORS for React Frontend (Support Vercel Domains & Localhost)
-origins = [
-    "https://hiresenseai-zeta.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173"
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.options("/{full_path:path}")
-async def options_handler(full_path: str):
-    return {"message": "OK"}
 
 # Register SQLAdmin (FastAPI's equivalent of Prisma Studio)
 admin_ui = Admin(app, engine, title="HireSense AI Database Studio")
