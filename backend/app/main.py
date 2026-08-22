@@ -26,6 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    return {"message": "OK"}
+
 # Register SQLAdmin (FastAPI's equivalent of Prisma Studio)
 admin_ui = Admin(app, engine, title="HireSense AI Database Studio")
 
