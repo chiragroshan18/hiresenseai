@@ -45,7 +45,7 @@ export default function Dashboard({ user, onLogout }) {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-900 text-slate-100">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col md:flex-row bg-slate-900 text-slate-100">
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 glass-nav border-r border-white/10 p-4 flex flex-col justify-between sticky top-0 z-30 md:h-screen">
         <div>
@@ -118,7 +118,7 @@ export default function Dashboard({ user, onLogout }) {
       </aside>
 
       {/* Main Dynamic Workspace Area */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-4 md:p-8 md:overflow-y-auto md:max-h-screen pb-28 md:pb-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
