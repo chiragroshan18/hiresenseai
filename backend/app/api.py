@@ -683,8 +683,8 @@ def get_admin_dashboard(db: Session = Depends(auth.get_db)):
     speeches = db.query(models.SpeechAnalysis).all()
     matches = db.query(models.ResumeJobMatch).all()
 
-    avg_resume = round(sum(r.score for r in resumes) / len(resumes), 1) if resumes else 84.5
-    avg_interview = round(sum(s.score for s in speeches) / len(speeches), 1) if speeches else 82.0
+    avg_resume = round(sum(r.score for r in resumes) / len(resumes), 1) if resumes else 0.0
+    avg_interview = round(sum(s.score for s in speeches) / len(speeches), 1) if speeches else 0.0
 
     # Aggregate extracted skills dynamically
     skill_counts = {}
@@ -698,7 +698,7 @@ def get_admin_dashboard(db: Session = Depends(auth.get_db)):
                 skill_counts[s] = skill_counts.get(s, 0) + 1
 
     sorted_skills = sorted(skill_counts.items(), key=lambda x: x[1], reverse=True)
-    top_skills = [s[0] for s in sorted_skills[:5]] if sorted_skills else ["Python", "React", "JavaScript", "SQL", "FastAPI"]
+    top_skills = [s[0] for s in sorted_skills[:5]] if sorted_skills else []
 
     # Aggregate missing skills dynamically
     missing_counts = {}
@@ -712,7 +712,7 @@ def get_admin_dashboard(db: Session = Depends(auth.get_db)):
                 missing_counts[s] = missing_counts.get(s, 0) + 1
 
     sorted_missing = sorted(missing_counts.items(), key=lambda x: x[1], reverse=True)
-    top_missing = [s[0] for s in sorted_missing[:5]] if sorted_missing else ["Docker", "AWS", "Kubernetes", "GraphQL", "CI/CD"]
+    top_missing = [s[0] for s in sorted_missing[:5]] if sorted_missing else []
 
     return {
         "total_users": total_users,

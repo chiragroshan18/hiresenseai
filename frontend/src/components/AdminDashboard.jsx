@@ -114,12 +114,16 @@ export default function AdminDashboard() {
             <Database className="w-4 h-4 text-blue-400" /> Top Skills Detected across Candidates
           </h4>
           <div className="space-y-1.5 text-xs">
-            {stats?.most_common_skills?.map((skill, idx) => (
-              <div key={idx} className="flex justify-between items-center bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5">
-                <span className="text-slate-200">{skill}</span>
-                <span className="text-blue-400 font-bold text-[10px]">High Demand</span>
-              </div>
-            ))}
+            {!stats?.most_common_skills || stats.most_common_skills.length === 0 ? (
+              <p className="text-slate-500 text-[11px] py-2">No candidate skill data recorded yet.</p>
+            ) : (
+              stats.most_common_skills.map((skill, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5">
+                  <span className="text-slate-200">{skill}</span>
+                  <span className="text-blue-400 font-bold text-[10px]">High Demand</span>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -128,12 +132,16 @@ export default function AdminDashboard() {
             <Activity className="w-4 h-4 text-amber-400" /> Top Missing Skill Gaps
           </h4>
           <div className="space-y-1.5 text-xs">
-            {stats?.most_missing_skills?.map((skill, idx) => (
-              <div key={idx} className="flex justify-between items-center bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5">
-                <span className="text-slate-200">{skill}</span>
-                <span className="text-amber-400 font-bold text-[10px]">Action Area</span>
-              </div>
-            ))}
+            {!stats?.most_missing_skills || stats.most_missing_skills.length === 0 ? (
+              <p className="text-slate-500 text-[11px] py-2">No missing skill gap data recorded yet.</p>
+            ) : (
+              stats.most_missing_skills.map((skill, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-slate-900/40 px-3 py-1.5 rounded-lg border border-white/5">
+                  <span className="text-slate-200">{skill}</span>
+                  <span className="text-amber-400 font-bold text-[10px]">Action Area</span>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
       </div>
