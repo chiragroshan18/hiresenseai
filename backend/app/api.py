@@ -212,16 +212,9 @@ def extract_resume_text(file_name: str, content: bytes) -> str:
             extracted_text = pytesseract.image_to_string(image)
         except Exception as ie:
             extracted_text = ""
-        
-        if not extracted_text.strip():
-            import re
-            strings = re.findall(rb'[\x20-\x7E\x0A\x0D]{3,}', content)
-            raw_text = " ".join([s.decode('ascii', errors='ignore') for s in strings])
-            if len(raw_text.strip()) > 10:
-                extracted_text = raw_text
 
     # 5. Plain Text / Code / General Documents
-    if not extracted_text.strip():
+    if not extracted_text.strip() and not any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".bmp"]):
         for encoding in ["utf-8", "latin-1", "ascii"]:
             try:
                 decoded = content.decode(encoding, errors="ignore")
