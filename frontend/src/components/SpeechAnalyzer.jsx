@@ -12,6 +12,7 @@ export default function SpeechAnalyzer() {
   
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  const mobileTextRef = useRef('');
   const isRecordingRef = useRef(false);
   const isTogglingRef = useRef(false);
 
@@ -89,53 +90,102 @@ export default function SpeechAnalyzer() {
     return cleaned.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
   };
 
-  const startRecording = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError("Web Speech API is not supported in this browser. Please use Chrome/Edge or paste your transcript below.");
-      return;
+  // 🖥️ PC Desktop Speech Engine (Natively continuous on Chrome/Edge)
+  const startDesktopEngine = (SpeechRecognition) => {
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      const initialBase = transcriptInput.trim();
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        setError('');
+      };
+
+      recognition.onresult = (event) => {
+        let finalPhrases = '';
+        let interimPhrases = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const phrase = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalPhrases += phrase.trim() + '. ';
+          } else {
+            interimPhrases += phrase;
+          }
+        }
+
+        let combined = (finalPhrases + ' ' + interimPhrases).trim();
+        let formatted = formatTextPunctuation(combined);
+        let full = initialBase ? `${initialBase} ${formatted}` : formatted;
+        setTranscriptInput(deduplicateSpeechText(full));
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Desktop speech error:", event.error);
+        if (event.error !== 'no-speech') {
+          setError(`Microphone error: ${event.error}`);
+        }
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (err) {
+      console.error("Desktop speech launch error:", err);
+      setIsRecording(false);
+      isRecordingRef.current = false;
     }
+  };
 
-    // Preserve existing textarea input as initial base
-    finalTranscriptRef.current = transcriptInput.trim();
-    isRecordingRef.current = true;
-    setIsRecording(true);
-    setError('');
+  // 📱 Mobile Phone Speech Engine (Turn-based auto-chained recognition for iOS Safari & Android Chrome)
+  const startMobileEngine = (SpeechRecognition) => {
+    mobileTextRef.current = transcriptInput.trim();
 
-    const runRecognitionSession = () => {
+    const startTurn = () => {
       if (!isRecordingRef.current) return;
 
       try {
         const recognition = new SpeechRecognition();
-        recognition.continuous = true;
+        recognition.continuous = false;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
+          setIsRecording(true);
           setError('');
         };
 
         recognition.onresult = (event) => {
-          let sessionFinal = '';
-          let sessionInterim = '';
+          let turnFinal = '';
+          let turnInterim = '';
 
-          for (let i = event.resultIndex; i < event.results.length; i++) {
+          for (let i = 0; i < event.results.length; i++) {
             const phrase = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              sessionFinal += phrase.trim() + '. ';
+              turnFinal += phrase.trim() + '. ';
             } else {
-              sessionInterim += phrase;
+              turnInterim += phrase;
             }
           }
 
-          if (sessionFinal) {
-            const cleanFinal = formatTextPunctuation(sessionFinal);
-            const base = finalTranscriptRef.current;
-            finalTranscriptRef.current = deduplicateSpeechText(base ? `${base} ${cleanFinal}` : cleanFinal);
+          if (turnFinal) {
+            const cleanFinal = formatTextPunctuation(turnFinal);
+            const base = mobileTextRef.current;
+            mobileTextRef.current = deduplicateSpeechText(base ? `${base} ${cleanFinal}` : cleanFinal);
           }
 
-          const cleanInterim = formatTextPunctuation(sessionInterim);
-          const base = finalTranscriptRef.current;
+          const cleanInterim = formatTextPunctuation(turnInterim);
+          const base = mobileTextRef.current;
           const combined = base ? `${base} ${cleanInterim}` : cleanInterim;
           const display = deduplicateSpeechText(combined);
 
@@ -143,24 +193,19 @@ export default function SpeechAnalyzer() {
         };
 
         recognition.onerror = (event) => {
-          console.error("Speech recognition error:", event.error);
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            setError("Microphone access denied. Please grant microphone permissions.");
+          console.error("Mobile speech error:", event.error);
+          if (event.error === 'not-allowed') {
+            setError("Microphone permission denied.");
             isRecordingRef.current = false;
             setIsRecording(false);
           }
         };
 
         recognition.onend = () => {
-          // Auto-restart seamless continuous recording on mobile/desktop silence pauses
           if (isRecordingRef.current) {
-            try {
-              recognition.start();
-            } catch (e) {
-              setTimeout(() => {
-                if (isRecordingRef.current) runRecognitionSession();
-              }, 250);
-            }
+            setTimeout(() => {
+              if (isRecordingRef.current) startTurn();
+            }, 200);
           } else {
             setIsRecording(false);
           }
@@ -169,13 +214,33 @@ export default function SpeechAnalyzer() {
         recognition.start();
         recognitionRef.current = recognition;
       } catch (err) {
-        console.error("Speech recognition launch error:", err);
-        isRecordingRef.current = false;
+        console.error("Mobile turn launch error:", err);
         setIsRecording(false);
+        isRecordingRef.current = false;
       }
     };
 
-    runRecognitionSession();
+    startTurn();
+  };
+
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError("Web Speech API is not supported in this browser. Please use Chrome/Edge or paste your transcript below.");
+      return;
+    }
+
+    isRecordingRef.current = true;
+    setIsRecording(true);
+    setError('');
+
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      startMobileEngine(SpeechRecognition);
+    } else {
+      startDesktopEngine(SpeechRecognition);
+    }
   };
 
   const stopRecording = () => {
