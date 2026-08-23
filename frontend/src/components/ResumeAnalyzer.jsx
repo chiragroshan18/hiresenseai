@@ -66,32 +66,32 @@ export default function ResumeAnalyzer() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 border border-white/10">
           <h3 className="text-lg font-semibold text-white mb-4">Option A: Upload File (PDF, DOCX, DOC, TXT, Image)</h3>
-          <div 
-            onClick={triggerFileInput} 
-            className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-colors group bg-slate-900/30"
+          <label 
+            htmlFor="resume-upload-input"
+            className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-colors group bg-slate-900/30 block"
           >
             {file ? (
               <div className="flex flex-col items-center">
                 <FileCheck className="w-10 h-10 text-emerald-400 mb-2 animate-bounce" />
                 <span className="text-sm font-semibold text-emerald-300 break-all">{file.name}</span>
-                <span className="text-[10px] text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB • Click to change file</span>
+                <span className="text-[10px] text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB • Tap to change file</span>
               </div>
             ) : (
               <div className="flex flex-col items-center">
                 <Upload className="w-10 h-10 text-blue-400 group-hover:scale-110 transition-transform mb-3" />
-                <span className="text-sm font-medium text-blue-400 group-hover:text-blue-300">Click anywhere here to browse file</span>
+                <span className="text-sm font-medium text-blue-400 group-hover:text-blue-300">Tap anywhere here to browse file / photo</span>
                 <p className="text-xs text-slate-500 mt-1">PDF, DOCX, DOC, TXT, PNG, JPG up to 10MB</p>
               </div>
             )}
             <input 
               ref={fileInputRef}
               type="file" 
-              accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.webp" 
+              accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.webp,image/*" 
               onChange={handleFileChange} 
               className="hidden" 
               id="resume-upload-input" 
             />
-          </div>
+          </label>
         </motion.div>
 
 
