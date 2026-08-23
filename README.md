@@ -20,9 +20,9 @@
 
 ## 📌 Executive Overview
 
-**HireSense AI** is a state-of-the-art, production-grade recruitment intelligence and interview telemetry platform. Built with a high-performance **Glassmorphic UI**, it empowers job seekers, candidates, and recruiters with real-time NLP analysis, multi-format document OCR, dual-engine speech-to-text processing, and dynamic database telemetry.
+**HireSense AI** is a state-of-the-art, production-grade recruitment intelligence and interview telemetry platform. Designed with a high-performance **Glassmorphic UI**, it empowers candidates and recruiters through real-time NLP skill analysis, multi-format document OCR, dual-engine speech-to-text processing, and dynamic database telemetry.
 
-Unlike generic tools, **HireSense AI** enforces strict **Context Verification**: invalid non-resume documents, unsupported files, or empty speech streams are cleanly rejected with HTTP 400 errors instead of returning fake or hardcoded mock scores.
+Unlike generic recruitment tools, **HireSense AI** enforces strict **Context Verification**: invalid non-resume documents (e.g. wallpapers, non-text photos, or random exam notes), incomplete job specifications, or empty speech transcripts are cleanly rejected with explicit HTTP 400 errors instead of generating hardcoded or fake placeholder scores.
 
 ---
 
@@ -88,37 +88,57 @@ graph TD
 
 ---
 
-## 👥 Roles & Capabilities
+## 🌟 Core System Enhancements & Rejection Logic
 
-### 👤 Candidate / User Capabilities
-1. **📄 Multi-Format Resume ATS Analysis**:
-   - Supports **PDF**, **DOCX**, **DOC**, **TXT**, and **Images** (`.png`, `.jpg`, `.jpeg`, `.webp`).
-   - Extracts real candidate skills, evaluates ATS readability (0–100%), and calculates exact word counts.
-   - Enforces **Context Validation**: Non-resume photos or random non-career text are rejected with `Document rejected: Missing resume context`.
+### 1. 🛡️ Strict Context Verification Engine
+- **Resume Analysis Rejection**:
+  - Every uploaded file (PDF, DOCX, DOC, TXT, Image) or text input is evaluated by `validate_resume_context(text)`.
+  - Non-resume photos (e.g. scenery or wallpapers) or random text lacking career background (< 15 words or missing career keywords) are **immediately REJECTED** with an explicit HTTP 400 alert:
+    > `"Document rejected: Missing resume context. Uploaded file does not contain valid career experience, skills, or professional background."`
+  - **Zero Hardcoded Fallbacks**: No fake ATS scores, no fake skills, and zero invalid records are saved to PostgreSQL.
 
-2. **🎯 Job Description Requirement Matcher**:
-   - Evaluates candidate profile alignment against target job specifications.
-   - Highlights real matched skills and missing competency gaps without hardcoded fallbacks.
+- **Job Description Matcher Rejection**:
+  - Requires a detailed job specification (minimum 10 words). Short or missing inputs trigger `HTTP 400: Job match rejected: Missing job description context`.
+  - Computes skill overlaps and missing gaps **strictly from the two provided texts** without hardcoded skill arrays (`["Python", "FastAPI", "Docker", "AWS", "SQL"]`).
 
-3. **🎙️ Speech-to-Text & Interview Articulation Analytics**:
-   - **Dual-Engine Architecture**: Dedicated continuous recognition on Desktop PC and touch-optimized chained recognition on Mobile (iOS Safari & Android Chrome).
-   - Measures Words Per Minute (WPM), filler word count (`um`, `uh`, `like`), sentiment, and articulation scores.
-
-4. **📜 Analysis History & Database Logs**:
-   - Scoped strictly to the candidate's account. Persists all valid historical analyses in Neon PostgreSQL.
-
-5. **📈 Performance Analytics**:
-   - Visualizes aggregate resume ratings, job compatibility scores, and interview articulation trends over time.
-
-6. **📄 Career Insights & PDF Report Export**:
-   - Generates formal, downloadable candidate PDF reports featuring ATS metrics, verified skills, and actionable career guidance.
+- **Speech & Interview STT Rejection**:
+  - Validates transcript length (minimum 4 words). Empty or un-transcribed audio streams trigger `HTTP 400: Speech analysis rejected: Missing speech transcript context`.
 
 ---
 
+### 2. 🎙️ Dual-Engine Speech Recognition Architecture
+- **Desktop PC Engine (`startDesktopEngine`)**:
+  - Native `continuous = true` engine optimized for Desktop Chrome and Edge.
+  - Captures continuous multi-sentence interview responses without terminating early between sentences.
+- **Mobile Phone Engine (`startMobileEngine`)**:
+  - Turn-based chained STT engine optimized for **Mobile Safari (iOS)** and **Mobile Chrome (Android)**.
+  - Eliminates mobile audio buffer phrase duplication (*"hello world hello world"*) and locks UI recording state seamlessly to prevent button flickering.
+
+---
+
+### 3. 📊 Dynamic Zero-Baseline Admin Control Room
+- **Real-Time Database Aggregation**:
+  - Monitors total registered candidates, aggregate analyses executed, average resume ATS ratings, average interview scores, system health microservices, top detected candidate skills, and top missing skill gaps.
+- **Zero-Hardcoding Guarantee**:
+  - On a fresh database with 0 candidate submissions, metrics display exact zero baselines (`0%` and `No candidate skill data recorded yet`) rather than fake fallback numbers.
+- **Dynamic Skill Ranking**:
+  - As candidates submit resumes and job matches, the Admin Control Center dynamically ranks the **Top 5 Detected Skills** (e.g. *Communication, GitHub, Python*) and **Top 5 Missing Skill Gaps** (e.g. *Docker, AWS, Kubernetes*) directly from Neon PostgreSQL records.
+
+---
+
+## 👥 Roles & Platform Capabilities
+
+### 👤 Candidate / User Capabilities
+- **📄 Resume ATS Analyzer**: Upload resumes in PDF, DOCX, DOC, TXT, or Image format to receive real ATS readability scores, word counts, and extracted skills.
+- **🎯 Job Requirement Matcher**: Evaluate alignment against target job specifications, identifying matched skills and missing competency gaps.
+- **🎙️ Speech & Interview STT**: Record live interview answers to analyze Words Per Minute (WPM), filler word frequency (`um`, `uh`), sentiment tone, and articulation clarity.
+- **📜 Analysis History**: Review past validated candidate analyses stored securely in Neon PostgreSQL.
+- **📈 Performance Analytics**: Track score progression over time across resume ATS ratings, job matches, and verbal articulation.
+- **📄 Career Insights & PDF Report Export**: Download formal PDF candidate evaluation summaries (`HireSense_AI_Career_Report.pdf`) featuring real-time database metrics.
+
 ### 🛡️ Admin Capabilities
-1. **Admin Control Room (`chirag@hiresense.ai`)**:
-   - Platform-wide telemetry monitoring total registered users, aggregate average scores, and top detected skill gaps.
-   - User account management and database health monitoring via **SQLAdmin Studio**.
+- **Platform Control Center (`chirag@hiresense.ai`)**: Inspect platform-wide telemetry, system health microservices, candidate user directory, and aggregate skill analytics.
+- **SQLAdmin Visual Studio (`/admin`)**: Inspect underlying relational database tables (`users`, `resumes`, `job_matches`, `speech_analyses`).
 
 ---
 
@@ -129,7 +149,7 @@ graph TD
 | **Frontend Application** | Vercel | [https://hiresenseai-zeta.vercel.app/](https://hiresenseai-zeta.vercel.app/) |
 | **Backend REST API** | Render | `https://hiresense-ai-backend-km18.onrender.com/api` |
 | **OpenAPI Documentation** | Render | `https://hiresense-ai-backend-km18.onrender.com/docs` |
-| **Cloud Database** | Neon Cloud | Managed PostgreSQL (us-east-2) |
+| **Relational Database** | Neon Cloud | Managed PostgreSQL (us-east-2) |
 
 ---
 
@@ -138,7 +158,7 @@ graph TD
 | Role | Name | Email Address | Password |
 | :--- | :--- | :--- | :--- |
 | **Admin** | Chirag Roshan | `chirag@hiresense.ai` | `123456` |
-| **User (Test)** | Candidate | `exhaustignite@gmail.com` | `123456` |
+| **User (Candidate)** | Test Candidate | `exhaustignite@gmail.com` | `123456` |
 
 ---
 
