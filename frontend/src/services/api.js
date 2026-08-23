@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -23,16 +23,20 @@ export const authService = {
   login: async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     if (response.data.access_token) {
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      sessionStorage.setItem('token', response.data.access_token);
+      sessionStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
     return response.data;
   },
   register: async (name, email, password) => {
     const response = await api.post('/auth/register', { name, email, password });
     if (response.data.access_token) {
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      sessionStorage.setItem('token', response.data.access_token);
+      sessionStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
     return response.data;
   },
@@ -45,11 +49,14 @@ export const authService = {
     return response.data;
   },
   logout: () => {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('activeTab');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
   getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
   }
 };

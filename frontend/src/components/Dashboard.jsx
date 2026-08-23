@@ -17,8 +17,18 @@ import AdminDashboard from '../components/AdminDashboard';
 
 export default function Dashboard({ user, onLogout }) {
   const isAdmin = user?.role === 'admin';
-  const [activeTab, setActiveTab] = useState(isAdmin ? 'admin' : 'overview');
+  const [activeTab, setActiveTabState] = useState(() => {
+    const saved = sessionStorage.getItem('activeTab');
+    if (saved) return saved;
+    return isAdmin ? 'admin' : 'overview';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleTabChange = (tabId) => {
+    setActiveTabState(tabId);
+    sessionStorage.setItem('activeTab', tabId);
+    setMobileMenuOpen(false);
+  };
 
   const navItems = isAdmin ? [
     { id: 'admin', label: 'Admin Control Center', icon: Shield },
@@ -64,7 +74,7 @@ export default function Dashboard({ user, onLogout }) {
               return (
                 <button
                   key={item.id}
-                  onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                  onClick={() => handleTabChange(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
@@ -117,7 +127,7 @@ export default function Dashboard({ user, onLogout }) {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.25 }}
           >
-            {activeTab === 'overview' && <DashboardOverview user={user} onNavigate={setActiveTab} />}
+            {activeTab === 'overview' && <DashboardOverview user={user} onNavigate={handleTabChange} />}
             {activeTab === 'insights' && <CareerInsights />}
             {activeTab === 'resume' && <ResumeAnalyzer />}
             {activeTab === 'job' && <JobMatcher />}

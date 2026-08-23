@@ -65,7 +65,7 @@ export default function ResumeAnalyzer() {
       {/* Upload & Input Form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 border border-white/10">
-          <h3 className="text-lg font-semibold text-white mb-4">Option A: Upload File (PDF / TXT)</h3>
+          <h3 className="text-lg font-semibold text-white mb-4">Option A: Upload File (PDF, DOCX, DOC, TXT, Image)</h3>
           <div 
             onClick={triggerFileInput} 
             className="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-colors group bg-slate-900/30"
@@ -80,13 +80,13 @@ export default function ResumeAnalyzer() {
               <div className="flex flex-col items-center">
                 <Upload className="w-10 h-10 text-blue-400 group-hover:scale-110 transition-transform mb-3" />
                 <span className="text-sm font-medium text-blue-400 group-hover:text-blue-300">Click anywhere here to browse file</span>
-                <p className="text-xs text-slate-500 mt-1">PDF, DOCX, TXT up to 10MB</p>
+                <p className="text-xs text-slate-500 mt-1">PDF, DOCX, DOC, TXT, PNG, JPG up to 10MB</p>
               </div>
             )}
             <input 
               ref={fileInputRef}
               type="file" 
-              accept=".pdf,.txt,.docx" 
+              accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.webp" 
               onChange={handleFileChange} 
               className="hidden" 
               id="resume-upload-input" 

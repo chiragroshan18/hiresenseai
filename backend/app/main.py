@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqladmin import Admin, ModelView
 from app.models import init_db, engine, User, Resume, JobDescription, ResumeJobMatch, SpeechAnalysis, InterviewAnalysis
 from app.api import router
@@ -11,13 +12,39 @@ app = FastAPI(
 )
 
 # Enable CORS for React Frontend (Support Vercel Domains & Localhost)
+allowed_origins = [
+    "https://hiresenseai-zeta.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add fallback CORS response middleware to ensure even unhandled 500 exceptions include CORS headers
+@app.middleware("http")
+async def add_cors_headers_on_exception(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as exc:
+        origin = request.headers.get("origin")
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal Server Error: {str(exc)}"}
+        )
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
 
 # Register SQLAdmin (FastAPI's equivalent of Prisma Studio)
 admin_ui = Admin(app, engine, title="HireSense AI Database Studio")
@@ -79,3 +106,4 @@ def unprefixed_forgot_password(data: ForgotPassword, db: Session = Depends(get_d
 @app.get("/")
 def read_root():
     return {"message": "HireSense AI API Service Running"}
+

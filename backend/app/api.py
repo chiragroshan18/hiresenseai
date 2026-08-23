@@ -156,6 +156,76 @@ def get_profile(current_user = Depends(auth.get_current_user)):
         "created_at": current_user.created_at
     }
 
+def extract_resume_text(file_name: str, content: bytes) -> str:
+    lower_name = file_name.lower()
+    extracted_text = ""
+
+    # 1. PDF Documents
+    if lower_name.endswith(".pdf"):
+        try:
+            import pypdf, io
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            extracted_text = "\n".join([page.extract_text() or "" for page in reader.pages])
+        except Exception:
+            pass
+        if not extracted_text.strip():
+            extracted_text = content.decode("utf-8", errors="ignore")
+
+    # 2. DOCX Documents (Modern Word)
+    elif lower_name.endswith(".docx"):
+        try:
+            import docx, io
+            doc = docx.Document(io.BytesIO(content))
+            extracted_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        except Exception:
+            pass
+        if not extracted_text.strip():
+            try:
+                import zipfile, io, xml.etree.ElementTree as ET
+                with zipfile.ZipFile(io.BytesIO(content)) as z:
+                    xml_content = z.read("word/document.xml")
+                    tree = ET.fromstring(xml_content)
+                    texts = [elem.text for elem in tree.iter() if elem.tag.endswith("}t") and elem.text]
+                    extracted_text = "\n".join(texts)
+            except Exception:
+                pass
+
+    # 3. DOC Documents (Older Word 97-2003)
+    elif lower_name.endswith(".doc"):
+        try:
+            import docx, io
+            doc = docx.Document(io.BytesIO(content))
+            extracted_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+        except Exception:
+            pass
+        if not extracted_text.strip():
+            import re
+            strings = re.findall(rb'[\x20-\x7E\x0A\x0D]{3,}', content)
+            extracted_text = " ".join([s.decode('ascii', errors='ignore') for s in strings])
+
+    # 4. Images & Resume Screenshots (.png, .jpg, .jpeg, .webp, .bmp)
+    elif any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".bmp"]):
+        try:
+            import pytesseract, io
+            from PIL import Image
+            image = Image.open(io.BytesIO(content))
+            extracted_text = pytesseract.image_to_string(image)
+        except Exception:
+            extracted_text = ""
+
+    # 5. Fallback for Plain Text / Unrecognized Files
+    if not extracted_text.strip():
+        for encoding in ["utf-8", "latin-1", "ascii"]:
+            try:
+                decoded = content.decode(encoding, errors="ignore")
+                if len(decoded.strip()) > 5:
+                    extracted_text = decoded
+                    break
+            except Exception:
+                pass
+
+    return extracted_text.replace("\x00", "").strip()
+
 # --- Resume Analysis APIs ---
 @router.post("/resume/analyze")
 async def analyze_resume_file(
@@ -168,34 +238,33 @@ async def analyze_resume_file(
     file_name = "pasted_resume.txt"
 
     if file:
-        file_name = file.filename
+        file_name = file.filename or "uploaded_resume"
         content = await file.read()
-        if file_name.endswith(".pdf"):
-            try:
-                import pypdf
-                import io
-                reader = pypdf.PdfReader(io.BytesIO(content))
-                extracted_text = "\n".join([page.extract_text() or "" for page in reader.pages])
-            except Exception:
-                extracted_text = content.decode("utf-8", errors="ignore")
-        else:
-            extracted_text = content.decode("utf-8", errors="ignore")
+        extracted_text = extract_resume_text(file_name, content)
     elif text:
-        extracted_text = text
+        extracted_text = text.replace("\x00", "").strip()
 
-    if not extracted_text.strip():
-        raise HTTPException(status_code=400, detail="Could not extract text from input resume")
+    file_name = file_name.replace("\x00", "").strip()
+
+    if not extracted_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not extract readable text from uploaded document. Please ensure it is a valid PDF, Word document (DOC/DOCX), plain text, or clear resume image."
+        )
 
     analysis = evaluate_resume(extracted_text)
 
     # Persist in DB if standard user
     if hasattr(current_user, "id") and current_user.id != 0:
+        clean_text_db = extracted_text[:2000].replace("\x00", "")
+        clean_skills_db = json.dumps(analysis["skills"]).replace("\x00", "")
+        
         resume_record = models.Resume(
             user_id=current_user.id,
             file_name=file_name,
-            extracted_text=extracted_text[:2000],
+            extracted_text=clean_text_db,
             score=analysis["score"],
-            skills=json.dumps(analysis["skills"])
+            skills=clean_skills_db
         )
         db.add(resume_record)
         db.commit()
@@ -226,15 +295,19 @@ def match_job(data: JobMatchRequest, current_user = Depends(auth.get_current_use
     if not resume_text:
         resume_text = "Experienced software engineer skilled in Python, React, JavaScript, SQL, Git and REST APIs."
 
-    match_result = match_job_description(resume_text, data.job_description)
+    resume_text = resume_text.replace("\x00", "")
+    clean_job_title = data.job_title.replace("\x00", "").strip()
+    clean_job_desc = data.job_description.replace("\x00", "").strip()
+
+    match_result = match_job_description(resume_text, clean_job_desc)
 
     if hasattr(current_user, "id") and current_user.id != 0:
         match_record = models.ResumeJobMatch(
             user_id=current_user.id,
-            job_title=data.job_title,
+            job_title=clean_job_title,
             match_score=match_result["match_score"],
-            matched_skills=json.dumps(match_result["matched_skills"]),
-            missing_skills=json.dumps(match_result["missing_skills"])
+            matched_skills=json.dumps(match_result["matched_skills"]).replace("\x00", ""),
+            missing_skills=json.dumps(match_result["missing_skills"]).replace("\x00", "")
         )
         db.add(match_record)
         db.commit()
@@ -255,7 +328,7 @@ async def analyze_speech(
     file_name = "audio_input.wav"
 
     if audio_file:
-        file_name = audio_file.filename
+        file_name = audio_file.filename or "audio_input.wav"
         content = await audio_file.read()
         
         # 1. Try faster-whisper (Local SOTA Speech-to-Text Model)
@@ -286,6 +359,8 @@ async def analyze_speech(
     else:
         transcript = "I led the development of our AI analytics system using Python, Scikit-learn and React."
 
+    transcript = transcript.replace("\x00", "")
+    file_name = file_name.replace("\x00", "")
 
     result = analyze_speech_transcript(transcript)
 
@@ -293,14 +368,14 @@ async def analyze_speech(
         speech_record = models.SpeechAnalysis(
             user_id=current_user.id,
             file_name=file_name,
-            transcript=result["transcript"],
+            transcript=result["transcript"].replace("\x00", ""),
             duration=45.0,
             word_count=result["word_count"],
             words_per_minute=result["words_per_minute"],
             filler_word_count=result["filler_word_count"],
             score=result["score"],
             sentiment=result["sentiment"],
-            recommendations=json.dumps(result["recommendations"])
+            recommendations=json.dumps(result["recommendations"]).replace("\x00", "")
         )
         db.add(speech_record)
         db.commit()
@@ -314,7 +389,7 @@ async def analyze_speech(
             vocabulary_score=88.0,
             sentiment_score=90.0 if result["sentiment"] == "Positive" else 75.0,
             overall_score=result["score"],
-            recommendations=json.dumps(result["recommendations"])
+            recommendations=json.dumps(result["recommendations"]).replace("\x00", "")
         )
         db.add(interview_record)
         db.commit()
