@@ -9,7 +9,44 @@ export default function SpeechAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
+  
   const recognitionRef = useRef(null);
+  const baseTranscriptRef = useRef('');
+  const isTogglingRef = useRef(false);
+
+  // Helper to deduplicate repeating phrases/sentences (common in mobile Web Speech API)
+  const deduplicateSpeechText = (text) => {
+    if (!text) return '';
+    
+    // 1. Clean consecutive duplicate words
+    let words = text.trim().split(/\s+/);
+    let cleanWords = [];
+    for (let i = 0; i < words.length; i++) {
+      const curr = words[i];
+      const prev = cleanWords[cleanWords.length - 1];
+      if (prev && curr.toLowerCase().replace(/[^a-z0-9]/g, '') === prev.toLowerCase().replace(/[^a-z0-9]/g, '') && curr.length > 1) {
+        continue;
+      }
+      cleanWords.push(curr);
+    }
+    
+    let str = cleanWords.join(' ');
+
+    // 2. Remove multi-word repeated phrases (e.g. "hello world hello world")
+    str = str.replace(/(\b[\w\s,'!?]+\b)(?:\s+\1)+/gi, '$1');
+
+    // 3. Remove duplicate sentences separated by punctuation
+    const parts = str.split(/(?<=[.!?])\s+/);
+    const uniqueParts = [];
+    for (const p of parts) {
+      const norm = p.trim().toLowerCase();
+      if (norm && !uniqueParts.some(u => u.trim().toLowerCase() === norm)) {
+        uniqueParts.push(p.trim());
+      }
+    }
+
+    return uniqueParts.join(' ');
+  };
 
   const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -18,14 +55,17 @@ export default function SpeechAnalyzer() {
       return;
     }
 
+    // Freeze base transcript at session launch
+    baseTranscriptRef.current = transcriptInput.trim();
+
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      // On mobile browsers, continuous=true causes speech engine duplication bug
+      recognition.continuous = !isMobile;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
-
-      // Capture initial text existing in input prior to session launch
-      const baseTranscript = transcriptInput.trim();
 
       recognition.onstart = () => {
         setIsRecording(true);
@@ -33,22 +73,22 @@ export default function SpeechAnalyzer() {
       };
 
       recognition.onresult = (event) => {
-        let finalPhrases = '';
-        let interimPhrases = '';
+        let currentSessionFinal = '';
+        let currentSessionInterim = '';
 
-        for (let i = 0; i < event.results.length; i++) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
           const phrase = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalPhrases += phrase.trim() + '. ';
+            currentSessionFinal += phrase.trim() + '. ';
           } else {
-            interimPhrases += phrase;
+            currentSessionInterim += phrase;
           }
         }
 
-        let combinedSessionText = (finalPhrases + interimPhrases).trim();
+        let combined = (currentSessionFinal + ' ' + currentSessionInterim).trim();
 
         // 1. Comprehensive technical domain vocabulary & phonetic mishearing corrections
-        let cleaned = combinedSessionText
+        let cleaned = combined
           .replace(/\b(let the back and|led the back and|led the backend|led backend)\b/gi, 'led the backend')
           .replace(/\b(architectural|architecture)\b/gi, 'architectural')
           .replace(/\b(for our requirement|for our recruitment|requirement platform|recruitment platform)\b/gi, 'for our recruitment platform')
@@ -84,27 +124,14 @@ export default function SpeechAnalyzer() {
           .replace(/\?\?+/g, '?')
           .replace(/\.\.+/g, '.');
 
-        // 3. Deduplicate mobile browser repeated phrase events ("hello world hello world...")
-        let words = cleaned.trim().split(/\s+/);
-        let resultWords = [];
-        for (let i = 0; i < words.length; i++) {
-          const curr = words[i];
-          const prev = resultWords[resultWords.length - 1];
-          if (prev && curr.toLowerCase().replace(/[^a-z0-9]/g, '') === prev.toLowerCase().replace(/[^a-z0-9]/g, '') && curr.length > 1) {
-            continue;
-          }
-          resultWords.push(curr);
-        }
-        let deduplicated = resultWords.join(' ').replace(/(\b[\w\s,'!?]+\b)(?:\s+\1)+/gi, '$1');
+        const base = baseTranscriptRef.current;
+        const full = base ? `${base} ${cleaned}` : cleaned;
+        const finalDeduplicated = deduplicateSpeechText(full);
 
         // Capitalize sentence starts
-        deduplicated = deduplicated.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+        const formatted = finalDeduplicated.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
 
-        const fullText = baseTranscript 
-          ? `${baseTranscript} ${deduplicated}` 
-          : deduplicated;
-
-        setTranscriptInput(fullText);
+        setTranscriptInput(formatted);
       };
 
       recognition.onerror = (event) => {
@@ -129,12 +156,22 @@ export default function SpeechAnalyzer() {
 
   const stopRecording = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
       setIsRecording(false);
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isTogglingRef.current) return;
+    isTogglingRef.current = true;
+    setTimeout(() => { isTogglingRef.current = false; }, 400);
+
     if (isRecording) {
       stopRecording();
     } else {
@@ -187,11 +224,15 @@ export default function SpeechAnalyzer() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Browser Recording Panel */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center">
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 cursor-pointer transition-all ${
-            isRecording ? 'bg-red-500/20 border-2 border-red-500 animate-ping' : 'bg-blue-600/20 border-2 border-blue-500 hover:scale-105'
-          }`} onClick={toggleRecording}>
+          <button 
+            type="button"
+            onClick={toggleRecording}
+            className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 cursor-pointer transition-all ${
+              isRecording ? 'bg-red-500/20 border-2 border-red-500 animate-ping' : 'bg-blue-600/20 border-2 border-blue-500 hover:scale-105'
+            }`} 
+          >
             {isRecording ? <MicOff className="w-8 h-8 text-red-400" /> : <Mic className="w-8 h-8 text-blue-400" />}
-          </div>
+          </button>
           <h3 className="text-lg font-semibold text-white mb-1">{isRecording ? "Listening & Recording..." : "Click Mic to Speak"}</h3>
           <p className="text-xs text-slate-400 max-w-xs">{isRecording ? "Recording active. Speak clearly into your microphone..." : "Real-time speech capture & audio processing"}</p>
         </motion.div>
