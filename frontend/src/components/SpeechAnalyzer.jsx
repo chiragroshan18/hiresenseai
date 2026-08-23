@@ -11,14 +11,15 @@ export default function SpeechAnalyzer() {
   const [error, setError] = useState('');
   
   const recognitionRef = useRef(null);
-  const baseTranscriptRef = useRef('');
+  const finalTranscriptRef = useRef('');
+  const isRecordingRef = useRef(false);
   const isTogglingRef = useRef(false);
 
-  // Helper to deduplicate repeating phrases/sentences (common in mobile Web Speech API)
+  // Clean and deduplicate sentences/phrases across continuous sessions
   const deduplicateSpeechText = (text) => {
     if (!text) return '';
     
-    // 1. Clean consecutive duplicate words
+    // Clean consecutive duplicate words
     let words = text.trim().split(/\s+/);
     let cleanWords = [];
     for (let i = 0; i < words.length; i++) {
@@ -32,10 +33,10 @@ export default function SpeechAnalyzer() {
     
     let str = cleanWords.join(' ');
 
-    // 2. Remove multi-word repeated phrases (e.g. "hello world hello world")
+    // Remove multi-word repeated phrases (e.g. "hello world hello world")
     str = str.replace(/(\b[\w\s,'!?]+\b)(?:\s+\1)+/gi, '$1');
 
-    // 3. Remove duplicate sentences separated by punctuation
+    // Remove duplicate sentences separated by punctuation
     const parts = str.split(/(?<=[.!?])\s+/);
     const uniqueParts = [];
     for (const p of parts) {
@@ -48,6 +49,46 @@ export default function SpeechAnalyzer() {
     return uniqueParts.join(' ');
   };
 
+  const formatTextPunctuation = (rawText) => {
+    if (!rawText) return '';
+    let cleaned = rawText
+      .replace(/\b(let the back and|led the back and|led the backend|led backend)\b/gi, 'led the backend')
+      .replace(/\b(architectural|architecture)\b/gi, 'architectural')
+      .replace(/\b(for our requirement|for our recruitment|requirement platform|recruitment platform)\b/gi, 'for our recruitment platform')
+      .replace(/\b(pie thaw|pie thon|python)\b/gi, 'Python')
+      .replace(/\b(faster API|fast API|fastapi)\b/gi, 'FastAPI')
+      .replace(/\b(tail wind|tail wind CSS|railway and css|tailwind)\b/gi, 'Tailwind CSS')
+      .replace(/\b(post agri SQL|postgress SQL|postgre SQL|postgresql|postgres)\b/gi, 'PostgreSQL')
+      .replace(/\b(on neon|on. neon|neon db)\b/gi, 'on Neon')
+      .replace(/\b(45 percentage|45 percent|45%)\b/gi, '45%')
+      .replace(/\b(increase enquiry|increase in query|inquiry speed|query speed)\b/gi, 'increase in query speed')
+      .replace(/\b(school database|our school database|our SQL database|sql database)\b/gi, 'our SQL database')
+      .replace(/\b(data in Texas|database in Texas|database indexes|sql data in Texas)\b/gi, 'database indexes')
+      .replace(/\b(JW authentication|jwt authentication|jwt|gateway authentication)\b/gi, 'JWT authentication')
+      .replace(/\b(insurance|insurance time|ensuring time|ensuring|insuring|assurance)\b/gi, 'ensuring')
+      .replace(/\b(ensuring time for|ensuring time|ensuring sub-second response times)\b/gi, 'ensuring sub-second response times')
+      .replace(/\b(subject response|sub second response|sub second)\b/gi, 'sub-second response')
+      .replace(/\b(resume valuation|candidate resume evaluation|resume evaluation)\b/gi, 'candidate resume evaluation')
+      .replace(/\b(darker|doc her|docker)\b/gi, 'Docker')
+      .replace(/\b(gits|get hub|github)\b/gi, 'GitHub')
+      .replace(/\b(rest api|rust api|restful api)\b/gi, 'REST API');
+
+    cleaned = cleaned
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.!?])/g, '$1')
+      .replace(/\b(hello|hi|hey|wow|awesome|great|fantastic|excellent)\b/gi, (match) => {
+        return match.charAt(0).toUpperCase() + match.slice(1) + '!';
+      })
+      .replace(/\b(how are you|what about you|what do you think)\b/gi, (match) => {
+        return match + '?';
+      })
+      .replace(/\!\!+/g, '!')
+      .replace(/\?\?+/g, '?')
+      .replace(/\.\.+/g, '.');
+
+    return cleaned.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+  };
+
   const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -55,111 +96,95 @@ export default function SpeechAnalyzer() {
       return;
     }
 
-    // Freeze base transcript at session launch
-    baseTranscriptRef.current = transcriptInput.trim();
+    // Preserve existing textarea input as initial base
+    finalTranscriptRef.current = transcriptInput.trim();
+    isRecordingRef.current = true;
+    setIsRecording(true);
+    setError('');
 
-    try {
-      const recognition = new SpeechRecognition();
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const runRecognitionSession = () => {
+      if (!isRecordingRef.current) return;
 
-      // On mobile browsers, continuous=true causes speech engine duplication bug
-      recognition.continuous = !isMobile;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
 
-      recognition.onstart = () => {
-        setIsRecording(true);
-        setError('');
-      };
+        recognition.onstart = () => {
+          setError('');
+        };
 
-      recognition.onresult = (event) => {
-        let currentSessionFinal = '';
-        let currentSessionInterim = '';
+        recognition.onresult = (event) => {
+          let sessionFinal = '';
+          let sessionInterim = '';
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const phrase = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            currentSessionFinal += phrase.trim() + '. ';
-          } else {
-            currentSessionInterim += phrase;
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const phrase = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              sessionFinal += phrase.trim() + '. ';
+            } else {
+              sessionInterim += phrase;
+            }
           }
-        }
 
-        let combined = (currentSessionFinal + ' ' + currentSessionInterim).trim();
+          if (sessionFinal) {
+            const cleanFinal = formatTextPunctuation(sessionFinal);
+            const base = finalTranscriptRef.current;
+            finalTranscriptRef.current = deduplicateSpeechText(base ? `${base} ${cleanFinal}` : cleanFinal);
+          }
 
-        // 1. Comprehensive technical domain vocabulary & phonetic mishearing corrections
-        let cleaned = combined
-          .replace(/\b(let the back and|led the back and|led the backend|led backend)\b/gi, 'led the backend')
-          .replace(/\b(architectural|architecture)\b/gi, 'architectural')
-          .replace(/\b(for our requirement|for our recruitment|requirement platform|recruitment platform)\b/gi, 'for our recruitment platform')
-          .replace(/\b(pie thaw|pie thon|python)\b/gi, 'Python')
-          .replace(/\b(faster API|fast API|fastapi)\b/gi, 'FastAPI')
-          .replace(/\b(tail wind|tail wind CSS|railway and css|tailwind)\b/gi, 'Tailwind CSS')
-          .replace(/\b(post agri SQL|postgress SQL|postgre SQL|postgresql|postgres)\b/gi, 'PostgreSQL')
-          .replace(/\b(on neon|on. neon|neon db)\b/gi, 'on Neon')
-          .replace(/\b(45 percentage|45 percent|45%)\b/gi, '45%')
-          .replace(/\b(increase enquiry|increase in query|inquiry speed|query speed)\b/gi, 'increase in query speed')
-          .replace(/\b(school database|our school database|our SQL database|sql database)\b/gi, 'our SQL database')
-          .replace(/\b(data in Texas|database in Texas|database indexes|sql data in Texas)\b/gi, 'database indexes')
-          .replace(/\b(JW authentication|jwt authentication|jwt|gateway authentication)\b/gi, 'JWT authentication')
-          .replace(/\b(insurance|insurance time|ensuring time|ensuring|insuring|assurance)\b/gi, 'ensuring')
-          .replace(/\b(ensuring time for|ensuring time|ensuring sub-second response times)\b/gi, 'ensuring sub-second response times')
-          .replace(/\b(subject response|sub second response|sub second)\b/gi, 'sub-second response')
-          .replace(/\b(resume valuation|candidate resume evaluation|resume evaluation)\b/gi, 'candidate resume evaluation')
-          .replace(/\b(darker|doc her|docker)\b/gi, 'Docker')
-          .replace(/\b(gits|get hub|github)\b/gi, 'GitHub')
-          .replace(/\b(rest api|rust api|restful api)\b/gi, 'REST API');
+          const cleanInterim = formatTextPunctuation(sessionInterim);
+          const base = finalTranscriptRef.current;
+          const combined = base ? `${base} ${cleanInterim}` : cleanInterim;
+          const display = deduplicateSpeechText(combined);
 
-        // 2. Natural sentence boundary & punctuation formatting
-        cleaned = cleaned
-          .replace(/\s+/g, ' ')
-          .replace(/\s+([,.!?])/g, '$1')
-          .replace(/\b(hello|hi|hey|wow|awesome|great|fantastic|excellent)\b/gi, (match) => {
-            return match.charAt(0).toUpperCase() + match.slice(1) + '!';
-          })
-          .replace(/\b(how are you|what about you|what do you think)\b/gi, (match) => {
-            return match + '?';
-          })
-          .replace(/\!\!+/g, '!')
-          .replace(/\?\?+/g, '?')
-          .replace(/\.\.+/g, '.');
+          setTranscriptInput(display);
+        };
 
-        const base = baseTranscriptRef.current;
-        const full = base ? `${base} ${cleaned}` : cleaned;
-        const finalDeduplicated = deduplicateSpeechText(full);
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error:", event.error);
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setError("Microphone access denied. Please grant microphone permissions.");
+            isRecordingRef.current = false;
+            setIsRecording(false);
+          }
+        };
 
-        // Capitalize sentence starts
-        const formatted = finalDeduplicated.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+        recognition.onend = () => {
+          // Auto-restart seamless continuous recording on mobile/desktop silence pauses
+          if (isRecordingRef.current) {
+            try {
+              recognition.start();
+            } catch (e) {
+              setTimeout(() => {
+                if (isRecordingRef.current) runRecognitionSession();
+              }, 250);
+            }
+          } else {
+            setIsRecording(false);
+          }
+        };
 
-        setTranscriptInput(formatted);
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        if (event.error !== 'no-speech') {
-          setError(`Microphone error: ${event.error}`);
-        }
+        recognition.start();
+        recognitionRef.current = recognition;
+      } catch (err) {
+        console.error("Speech recognition launch error:", err);
+        isRecordingRef.current = false;
         setIsRecording(false);
-      };
+      }
+    };
 
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognition.start();
-      recognitionRef.current = recognition;
-    } catch (err) {
-      setError("Could not access microphone. Please ensure microphone permissions are granted.");
-      setIsRecording(false);
-    }
+    runRecognitionSession();
   };
 
   const stopRecording = () => {
+    isRecordingRef.current = false;
+    setIsRecording(false);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch (e) {}
-      setIsRecording(false);
     }
   };
 
@@ -172,7 +197,7 @@ export default function SpeechAnalyzer() {
     isTogglingRef.current = true;
     setTimeout(() => { isTogglingRef.current = false; }, 400);
 
-    if (isRecording) {
+    if (isRecordingRef.current) {
       stopRecording();
     } else {
       startRecording();
