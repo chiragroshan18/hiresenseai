@@ -36,7 +36,6 @@ export default function SpeechAnalyzer() {
         let finalPhrases = '';
         let interimPhrases = '';
 
-        // Accumulate ALL speech fragments from result index 0 across the entire recording session
         for (let i = 0; i < event.results.length; i++) {
           const phrase = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
@@ -85,13 +84,25 @@ export default function SpeechAnalyzer() {
           .replace(/\?\?+/g, '?')
           .replace(/\.\.+/g, '.');
 
+        // 3. Deduplicate mobile browser repeated phrase events ("hello world hello world...")
+        let words = cleaned.trim().split(/\s+/);
+        let resultWords = [];
+        for (let i = 0; i < words.length; i++) {
+          const curr = words[i];
+          const prev = resultWords[resultWords.length - 1];
+          if (prev && curr.toLowerCase().replace(/[^a-z0-9]/g, '') === prev.toLowerCase().replace(/[^a-z0-9]/g, '') && curr.length > 1) {
+            continue;
+          }
+          resultWords.push(curr);
+        }
+        let deduplicated = resultWords.join(' ').replace(/(\b[\w\s,'!?]+\b)(?:\s+\1)+/gi, '$1');
 
         // Capitalize sentence starts
-        cleaned = cleaned.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+        deduplicated = deduplicated.replace(/(^\s*|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
 
         const fullText = baseTranscript 
-          ? `${baseTranscript} ${cleaned}` 
-          : cleaned;
+          ? `${baseTranscript} ${deduplicated}` 
+          : deduplicated;
 
         setTranscriptInput(fullText);
       };

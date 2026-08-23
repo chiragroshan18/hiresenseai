@@ -11,7 +11,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for React Frontend (Support Vercel Domains & Localhost)
+# Enable CORS for React Frontend (Support Vercel Domains, Mobile Browsers & Localhost)
 allowed_origins = [
     "https://hiresenseai-zeta.vercel.app",
     "http://localhost:5173",
@@ -22,29 +22,46 @@ allowed_origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add fallback CORS response middleware to ensure even unhandled 500 exceptions include CORS headers
+# Custom CORS & OPTIONS Preflight Response Middleware for Mobile Browsers (iOS Safari, Android Chrome)
 @app.middleware("http")
-async def add_cors_headers_on_exception(request: Request, call_next):
+async def custom_cors_and_exception_middleware(request: Request, call_next):
+    origin = request.headers.get("origin")
+    
+    # Direct OPTIONS preflight handling for mobile phone browsers
+    if request.method == "OPTIONS":
+        response = JSONResponse(status_code=200, content={"status": "OK"})
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
     try:
         response = await call_next(request)
-        return response
     except Exception as exc:
-        origin = request.headers.get("origin")
         response = JSONResponse(
             status_code=500,
             content={"detail": f"Internal Server Error: {str(exc)}"}
         )
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        return response
+
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    return response
 
 # Register SQLAdmin (FastAPI's equivalent of Prisma Studio)
 admin_ui = Admin(app, engine, title="HireSense AI Database Studio")
