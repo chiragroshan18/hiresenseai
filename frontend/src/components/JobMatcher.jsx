@@ -59,7 +59,7 @@ export default function JobMatcher() {
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             placeholder="Paste requirement text, technical skill criteria and responsibilities..."
-            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none"
+            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none whitespace-pre-wrap leading-relaxed"
           />
         </div>
 
@@ -70,7 +70,7 @@ export default function JobMatcher() {
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             placeholder="Leave empty to use your primary stored resume..."
-            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none"
+            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none whitespace-pre-wrap leading-relaxed"
           />
         </div>
 

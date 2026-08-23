@@ -64,9 +64,7 @@ export const authService = {
 
 export const analysisService = {
   analyzeResume: async (formData) => {
-    const response = await api.post('/resume/analyze', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const response = await api.post('/resume/analyze', formData);
     return response.data;
   },
   matchJob: async (job_title, job_description, resume_text = '') => {
@@ -74,9 +72,7 @@ export const analysisService = {
     return response.data;
   },
   analyzeSpeech: async (formData) => {
-    const response = await api.post('/speech/analyze', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const response = await api.post('/speech/analyze', formData);
     return response.data;
   },
   getHistory: async () => {

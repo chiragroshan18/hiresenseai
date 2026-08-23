@@ -131,6 +131,15 @@ export default function SpeechAnalyzer() {
     }
   };
 
+  const getErrorMessage = (err) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+    if (detail && typeof detail === 'object') return detail.message || JSON.stringify(detail);
+    if (err.message) return err.message;
+    return 'Speech analysis failed. Please try again.';
+  };
+
   const handleAnalyze = async (e) => {
     e.preventDefault();
     if (!transcriptInput.trim()) {
@@ -148,7 +157,8 @@ export default function SpeechAnalyzer() {
       const res = await analysisService.analyzeSpeech(formData);
       setReport(res);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Speech analysis failed');
+      console.error("Speech analyze error:", err);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -186,12 +196,12 @@ export default function SpeechAnalyzer() {
             value={transcriptInput}
             onChange={(e) => setTranscriptInput(e.target.value)}
             placeholder="Recorded spoken responses will automatically appear here with smart punctuation formatting. You can also edit or paste directly..."
-            className="w-full p-4 rounded-xl glass-input text-xs leading-relaxed text-slate-100 min-h-[180px] resize-y"
+            className="w-full p-4 rounded-xl glass-input text-xs leading-relaxed text-slate-100 min-h-[180px] resize-y whitespace-pre-wrap"
           />
         </motion.div>
       </div>
 
-      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>}
+      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm break-words">{error}</div>}
 
       <div className="flex justify-end">
         <button

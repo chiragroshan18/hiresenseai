@@ -24,6 +24,15 @@ export default function ResumeAnalyzer() {
     }
   };
 
+  const getErrorMessage = (err) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+    if (detail && typeof detail === 'object') return detail.message || JSON.stringify(detail);
+    if (err.message) return err.message;
+    return 'Failed to analyze resume. Please try again.';
+  };
+
   const handleAnalyze = async (e) => {
     e.preventDefault();
     if (!file && !textInput.trim()) {
@@ -45,7 +54,8 @@ export default function ResumeAnalyzer() {
       const res = await analysisService.analyzeResume(formData);
       setReport(res);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to analyze resume');
+      console.error("Resume analyze error:", err);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -102,12 +112,12 @@ export default function ResumeAnalyzer() {
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder="Paste raw resume plain text here..."
-            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none"
+            className="w-full p-3 rounded-xl glass-input text-xs text-slate-200 resize-none whitespace-pre-wrap leading-relaxed"
           />
         </motion.div>
       </div>
 
-      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>}
+      {error && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm break-words">{error}</div>}
 
       <div className="flex justify-end">
         <button

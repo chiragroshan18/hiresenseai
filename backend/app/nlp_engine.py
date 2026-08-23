@@ -99,9 +99,31 @@ def match_job_description(resume_text: str, job_text: str):
         "keyword_coverage": min(round(match_score + 5, 1), 99.0)
     }
 
+def format_transcript_text(transcript: str) -> str:
+    if not transcript or not transcript.strip():
+        return ""
+    
+    # Standardize spaces and clean up
+    clean_text = re.sub(r'\s+', ' ', transcript.strip())
+    
+    # Capitalize sentences and add punctuation after natural sentence pauses
+    sentences = re.split(r'(?<=[.!?])\s+', clean_text)
+    formatted_sentences = []
+    
+    for s in sentences:
+        s = s.strip()
+        if s:
+            s = s[0].upper() + (s[1:] if len(s) > 1 else "")
+            if not s.endswith(('.', '!', '?')):
+                s += '.'
+            formatted_sentences.append(s)
+            
+    return "\n".join(formatted_sentences)
+
 FILLER_WORDS = ["um", "uh", "like", "you know", "actually", "basically", "literally", "sort of", "kind of"]
 
 def analyze_speech_transcript(transcript: str, duration_sec: float = 45.0):
+    formatted_transcript = format_transcript_text(transcript)
     words = re.findall(r'\w+', transcript.lower())
     word_count = len(words)
     wpm = round((word_count / max(duration_sec, 1.0)) * 60, 1) if duration_sec > 0 else 130.0
@@ -137,7 +159,7 @@ def analyze_speech_transcript(transcript: str, duration_sec: float = 45.0):
     recs.append("Include more specific metrics and quantitative achievements in your interview responses.")
 
     return {
-        "transcript": transcript,
+        "transcript": formatted_transcript or transcript,
         "word_count": word_count,
         "words_per_minute": wpm if wpm > 0 else 125.0,
         "filler_word_count": filler_count,
