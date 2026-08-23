@@ -9,8 +9,14 @@ const API_BASE_URL = rawUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000,
+  timeout: 120000, // 120s timeout for mobile 4G/5G networks & Render cold starts
 });
+
+// Pre-warm Render backend service on load to prevent cold-start timeouts
+try {
+  const rootPingUrl = API_BASE_URL.replace(/\/api$/, '');
+  axios.get(rootPingUrl, { timeout: 15000 }).catch(() => {});
+} catch (e) {}
 
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');

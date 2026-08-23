@@ -29,6 +29,9 @@ export default function ResumeAnalyzer() {
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
     if (detail && typeof detail === 'object') return detail.message || JSON.stringify(detail);
+    if (err.message && err.message.toLowerCase().includes('network error')) {
+      return 'Network Connection Notice: Render backend is spinning up or mobile data network blocked preflight. Please retry in 5 seconds or switch to Wi-Fi.';
+    }
     if (err.message) return err.message;
     return 'Failed to analyze resume. Please try again.';
   };
