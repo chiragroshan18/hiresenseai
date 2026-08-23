@@ -150,6 +150,7 @@ export default function SpeechAnalyzer() {
   // 📱 Mobile Phone Speech Engine (Turn-based auto-chained recognition for iOS Safari & Android Chrome)
   const startMobileEngine = (SpeechRecognition) => {
     mobileTextRef.current = transcriptInput.trim();
+    setIsRecording(true);
 
     const startTurn = () => {
       if (!isRecordingRef.current) return;
@@ -161,7 +162,6 @@ export default function SpeechAnalyzer() {
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-          setIsRecording(true);
           setError('');
         };
 
@@ -205,7 +205,7 @@ export default function SpeechAnalyzer() {
           if (isRecordingRef.current) {
             setTimeout(() => {
               if (isRecordingRef.current) startTurn();
-            }, 200);
+            }, 100);
           } else {
             setIsRecording(false);
           }
@@ -215,8 +215,9 @@ export default function SpeechAnalyzer() {
         recognitionRef.current = recognition;
       } catch (err) {
         console.error("Mobile turn launch error:", err);
-        setIsRecording(false);
-        isRecordingRef.current = false;
+        if (!isRecordingRef.current) {
+          setIsRecording(false);
+        }
       }
     };
 

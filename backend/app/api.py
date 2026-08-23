@@ -211,32 +211,28 @@ def extract_resume_text(file_name: str, content: bytes) -> str:
             image = Image.open(io.BytesIO(content))
             extracted_text = pytesseract.image_to_string(image)
         except Exception as ie:
-            print("Pytesseract OCR notice:", ie)
             extracted_text = ""
         
-        # Fallback for mobile photo uploads when pytesseract binary is missing on Render Linux
         if not extracted_text.strip():
             import re
             strings = re.findall(rb'[\x20-\x7E\x0A\x0D]{3,}', content)
             raw_text = " ".join([s.decode('ascii', errors='ignore') for s in strings])
-            if len(raw_text.strip()) > 30:
+            if len(raw_text.strip()) > 10:
                 extracted_text = raw_text
-            else:
-                extracted_text = f"Mobile Resume Photo ({file_name}). Experienced candidate with software engineering, project management, Python, React, SQL, communication, leadership and technical problem-solving skills."
 
-    # 5. Fallback for Plain Text / Unrecognized Files
+    # 5. Plain Text / Code / General Documents
     if not extracted_text.strip():
         for encoding in ["utf-8", "latin-1", "ascii"]:
             try:
                 decoded = content.decode(encoding, errors="ignore")
-                if len(decoded.strip()) > 5:
+                if len(decoded.strip()) > 3:
                     extracted_text = decoded
                     break
             except Exception:
                 pass
 
     if not extracted_text.strip():
-        extracted_text = f"Document ({file_name}). Experienced software developer with proficiency in Python, React, JavaScript, SQL, Git, communication, problem solving and technical analysis."
+        extracted_text = f"Uploaded File ({file_name})"
 
     return extracted_text.replace("\x00", "").strip()
 
