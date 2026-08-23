@@ -35,6 +35,34 @@ def extract_skills_nlp(text: str) -> list:
             found_skills.append(skill.title())
     return sorted(list(set(found_skills)))
 
+def validate_resume_context(text: str) -> tuple[bool, str]:
+    if not text or not text.strip():
+        return False, "Document rejected: Missing content or empty text file."
+        
+    words = text.strip().split()
+    if len(words) < 15:
+        return False, "Document rejected: Missing resume context. Insufficient content length (minimum 15 words required)."
+
+    text_lower = text.lower()
+    
+    # Core resume structural signals
+    resume_keywords = [
+        "experience", "work", "education", "skills", "projects", "profile", "summary",
+        "university", "college", "bachelor", "master", "phd", "degree", "diploma",
+        "developer", "engineer", "analyst", "manager", "designer", "consultant",
+        "specialist", "administrator", "coordinator", "lead", "intern", "associate",
+        "employment", "responsibilities", "achievements", "certificat", "contact",
+        "phone", "email", "linkedin", "github", "curriculum", "vitae", "resume"
+    ]
+    
+    matched_keywords = sum(1 for kw in resume_keywords if kw in text_lower)
+    found_skills = extract_skills_nlp(text)
+    
+    if matched_keywords < 1 and len(found_skills) == 0:
+        return False, "Document rejected: Missing resume context. Uploaded file does not contain valid career experience, skills, or professional background."
+
+    return True, ""
+
 def evaluate_resume(text: str):
     skills = extract_skills_nlp(text)
     length = len(text.split())
@@ -80,23 +108,25 @@ def match_job_description(resume_text: str, job_text: str):
     job_skills = set([s.lower() for s in extract_skills_nlp(job_text)])
     
     if not job_skills:
-        # Fallback keyword match if specific tech skills aren't detected
-        job_words = set(re.findall(r'\w+', job_text.lower()))
-        matched = [w.title() for w in resume_skills if w in job_words]
-        missing = ["Python", "FastAPI", "Docker", "AWS", "SQL"]
-        match_score = 75.0
+        # Match general words if no specific technical skills are detected in job text
+        job_words = set(re.findall(r'\b[a-zA-Z]{3,}\b', job_text.lower()))
+        matched_set = set([s for s in resume_skills if s in job_words])
+        missing_set = set()
+        matched = sorted([s.title() for s in matched_set])
+        missing = []
+        match_score = min(round((len(matched_set) / max(len(resume_skills), 1)) * 100, 1), 85.0) if resume_skills else 50.0
     else:
         matched_set = resume_skills.intersection(job_skills)
         missing_set = job_skills - resume_skills
         matched = sorted([s.title() for s in matched_set])
         missing = sorted([s.title() for s in missing_set])
-        match_score = min(round((len(matched_set) / len(job_skills)) * 100, 1), 98.0) if job_skills else 80.0
+        match_score = min(round((len(matched_set) / len(job_skills)) * 100, 1), 98.0)
         
     return {
-        "match_score": max(match_score, 40.0),
+        "match_score": max(match_score, 10.0),
         "matched_skills": matched,
-        "missing_skills": missing if missing else ["Cloud Deployment", "CI/CD Pipeline"],
-        "keyword_coverage": min(round(match_score + 5, 1), 99.0)
+        "missing_skills": missing,
+        "keyword_coverage": min(round(match_score + 2.0, 1), 99.0)
     }
 
 def format_transcript_text(transcript: str) -> str:

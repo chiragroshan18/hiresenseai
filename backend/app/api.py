@@ -237,6 +237,9 @@ def extract_resume_text(file_name: str, content: bytes) -> str:
     return extracted_text.replace("\x00", "").strip()
 
 # --- Resume Analysis APIs ---
+# --- Resume Analysis APIs ---
+from app.nlp_engine import validate_resume_context, evaluate_resume, match_job_description, analyze_speech_transcript
+
 @router.post("/resume/analyze")
 async def analyze_resume_file(
     file: Optional[UploadFile] = File(None),
@@ -259,7 +262,15 @@ async def analyze_resume_file(
     if not extracted_text:
         raise HTTPException(
             status_code=400,
-            detail="Could not extract readable text from uploaded document. Please ensure it is a valid PDF, Word document (DOC/DOCX), plain text, or clear resume image."
+            detail="Document rejected: Could not extract readable text from uploaded file. Please ensure it is a valid PDF, Word document (DOC/DOCX), plain text, or clear resume image."
+        )
+
+    # Validate Context Quality (Ensure file is actual resume/career document, not random exam notes or empty text)
+    valid_context, reject_reason = validate_resume_context(extracted_text)
+    if not valid_context:
+        raise HTTPException(
+            status_code=400,
+            detail=reject_reason
         )
 
     analysis = evaluate_resume(extracted_text)
@@ -302,12 +313,22 @@ def match_job(data: JobMatchRequest, current_user = Depends(auth.get_current_use
         if last_resume:
             resume_text = last_resume.extracted_text
 
-    if not resume_text:
-        resume_text = "Experienced software engineer skilled in Python, React, JavaScript, SQL, Git and REST APIs."
+    if not resume_text or len(resume_text.strip().split()) < 15:
+        raise HTTPException(
+            status_code=400,
+            detail="Job match rejected: Missing resume context. Please upload or paste a valid resume before running Job Matcher."
+        )
+
+    clean_job_title = data.job_title.replace("\x00", "").strip() if data.job_title else "Job Specification"
+    clean_job_desc = data.job_description.replace("\x00", "").strip() if data.job_description else ""
+
+    if not clean_job_desc or len(clean_job_desc.split()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Job match rejected: Missing job description context. Please provide a detailed job specification (minimum 10 words)."
+        )
 
     resume_text = resume_text.replace("\x00", "")
-    clean_job_title = data.job_title.replace("\x00", "").strip()
-    clean_job_desc = data.job_description.replace("\x00", "").strip()
 
     match_result = match_job_description(resume_text, clean_job_desc)
 
@@ -335,13 +356,12 @@ async def analyze_speech(
     db: Session = Depends(auth.get_db)
 ):
     transcript = ""
-    file_name = "audio_input.wav"
+    file_name = "speech_transcript.txt"
 
     if audio_file:
         file_name = audio_file.filename or "audio_input.wav"
         content = await audio_file.read()
         
-        # 1. Try faster-whisper (Local SOTA Speech-to-Text Model)
         try:
             import tempfile
             from faster_whisper import WhisperModel
@@ -349,12 +369,10 @@ async def analyze_speech(
                 tmp.write(content)
                 tmp_path = tmp.name
             
-            # Use tiny/base model for fast CPU/GPU inference
             model = WhisperModel("tiny", device="cpu", compute_type="int8")
             segments, _ = model.transcribe(tmp_path, beam_size=5)
             transcript = " ".join([segment.text for segment in segments]).strip()
         except Exception:
-            # 2. Fallback to SpeechRecognition Google STT API
             try:
                 import speech_recognition as sr
                 import io
@@ -363,14 +381,18 @@ async def analyze_speech(
                     audio = r.record(source)
                     transcript = r.recognize_google(audio)
             except Exception:
-                transcript = "I led the backend architecture for our platform using Python, FastAPI and React with PostgreSQL database integration."
+                pass
     elif transcript_input:
-        transcript = transcript_input
-    else:
-        transcript = "I led the development of our AI analytics system using Python, Scikit-learn and React."
+        transcript = transcript_input.strip()
 
-    transcript = transcript.replace("\x00", "")
-    file_name = file_name.replace("\x00", "")
+    transcript = transcript.replace("\x00", "").strip()
+    file_name = file_name.replace("\x00", "").strip()
+
+    if not transcript or len(transcript.split()) < 4:
+        raise HTTPException(
+            status_code=400,
+            detail="Speech analysis rejected: Missing speech transcript context. Please record or enter a clear interview response (minimum 4 words)."
+        )
 
     result = analyze_speech_transcript(transcript)
 
